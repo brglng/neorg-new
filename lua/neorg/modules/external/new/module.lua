@@ -29,7 +29,6 @@ module.setup = function()
         success = true,
         requires = {
             "core.dirman",
-            "core.esupports.metagen",
         },
     }
 end
@@ -77,7 +76,7 @@ module.config.public = {
             error("The default filename generator requires at least one argument to generate a filename. Please provide a title argument or configure a custom filename generator.")
         end
         return table.concat(vim.tbl_map(function(arg)
-            return vim.fn.substitute(vim.fn.tolower(arg), "\s*", "-", "g")
+            return vim.fn.substitute(vim.fn.tolower(arg), "\\s\\+", "-", "g")
         end, args), "-") .. ".norg"
     end,
 

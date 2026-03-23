@@ -1,13 +1,14 @@
 # neorg-new
 
 A Neorg plugin that adds a `:Neorg new` command for quickly creating new `.norg`
-files with automatically generated metadata and content.
+files with automatically generated content (and optional metadata).
 
 ## Installation
 
 Install the plugin with your preferred package manager and load it inside your
-Neorg setup. The module requires both `core.dirman` and `core.esupports.metagen`
-to be loaded as well.
+Neorg setup. The module requires `core.dirman` to be loaded. Optionally load
+`core.esupports.metagen` with `type = "auto"` or `type = "empty"` to enable
+automatic metadata injection into new files.
 
 ### lazy.nvim
 
@@ -31,6 +32,8 @@ to be loaded as well.
                 },
                 ["core.esupports.metagen"] = {
                     config = {
+                        -- Set to "auto" or "empty" to enable metadata injection.
+                        -- If omitted (or set to "none"), no metadata is injected.
                         type = "auto",
                     },
                 },
@@ -76,9 +79,10 @@ By default:
 ```
 
 This creates `my-meeting-notes.norg` in the current (or configured) workspace,
-injects a `@document.meta` block whose `title` field is set to
-`My Meeting Notes`, and prepends the heading `* My Meeting Notes` after the
-metadata block.
+and prepends the heading `* My Meeting Notes` at the top of the file. If
+`core.esupports.metagen` is loaded with `type = "auto"` or `type = "empty"`,
+a `@document.meta` block with the `title` field set to `My Meeting Notes` is
+also injected.
 
 ## Configuration
 
@@ -110,7 +114,7 @@ metadata block.
         -- (e.g. {"my", "note"} -> "my-note.norg").
         filename = function(args)
             return table.concat(vim.tbl_map(function(arg)
-                return vim.fn.substitute(vim.fn.tolower(arg), [[\s*]], "-", "g")
+                return vim.fn.substitute(vim.fn.tolower(arg), [[\s\+]], "-", "g")
             end, args), "-") .. ".norg"
         end,
 
@@ -139,11 +143,12 @@ metadata block.
 
 ### Notes on metadata
 
-Metadata is **always** injected into every new file created by `:Neorg new`
-and `:Neorg new-template`, with the `title` field set to the value returned by
-the `title` callback. The actual injection is performed by
-`core.esupports.metagen`; make sure that module is loaded and its `type` option
-is set to `"auto"` or `"empty"` for metadata to appear in the file.
+Metadata injection is **optional** and controlled entirely by
+`core.esupports.metagen`. When that module is loaded and its `type` option is
+set to `"auto"` or `"empty"`, a `@document.meta` block is injected into each
+new file with the `title` field set to the value returned by the `title`
+callback. When `core.esupports.metagen` is not loaded, or its `type` is set to
+`"none"`, no metadata block is generated and the `title` callback is not called.
 
 ### Custom example
 
@@ -168,8 +173,8 @@ is set to `"auto"` or `"empty"` for metadata to appear in the file.
 ```
 
 Running `:Neorg new My Project Plan` would create
-`pages/my-project-plan.norg` with the title `My Project Plan` in its metadata
-and the following content after the metadata block:
+`pages/my-project-plan.norg` (with the title `My Project Plan` in its metadata
+if `core.esupports.metagen` is enabled) and the following content:
 
 ```norg
 * My Project Plan

@@ -40,7 +40,7 @@ module.load = function()
                 min_args = 0,
                 name = "external.new",
             },
-            ["new-template"] = {
+            template = {
                 min_args = 1,
                 name = "external.new-template",
             },
@@ -61,10 +61,8 @@ module.config.public = {
         if #args == 0 then
             error("The default title generator requires at least one argument to generate a title. Please provide a title argument or configure a custom title generator.")
         end
-        return table.concat(vim.tbl_map(function(arg)
-            local first = vim.fn.nr2char(vim.fn.char2nr(arg:sub(1, vim.fn.strchars(arg, 1))))
-            local rest = arg:sub(vim.fn.strlen(first) + 1)
-            return vim.fn.toupper(first) .. rest
+        return table.concat(vim.tbl_map(function(s)
+            return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)
         end, args), " ")
     end,
 
@@ -88,10 +86,8 @@ module.config.public = {
         if #args == 0 then
             error("The default template generator requires at least one argument to generate content. Please provide a title argument or configure a custom template generator.")
         end
-        local heading = table.concat(vim.tbl_map(function(arg)
-            local first = vim.fn.nr2char(vim.fn.char2nr(arg:sub(1, vim.fn.strchars(arg, 1))))
-            local rest = arg:sub(vim.fn.strlen(first) + 1)
-            return vim.fn.toupper(first) .. rest
+        local heading = table.concat(vim.tbl_map(function(s)
+            return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)
         end, args), " ")
         return { "* " .. heading }
     end,
@@ -168,10 +164,11 @@ module.public = {
 
 module.on_event = function(event)
     if event.split_type[2] == "external.new" then
-        module.public.new_file(nil, event.content)
+        local args = { unpack(event.content, 1, #event.content) }
+        module.public.new_file(nil, args)
     elseif event.split_type[2] == "external.new-template" then
         local template_name = event.content[1]
-        local args = { unpack(event.content, 2) }
+        local args = { unpack(event.content, 2, #event.content) }
         module.public.new_file(template_name, args)
     end
 end
@@ -179,6 +176,7 @@ end
 module.events.subscribed = {
     ["core.neorgcmd"] = {
         ["external.new"] = true,
+        ["external.new-template"] = true,
     },
 }
 

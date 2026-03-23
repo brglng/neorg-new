@@ -63,7 +63,9 @@ module.config.public = {
             error("The default title generator requires at least one argument to generate a title. Please provide a title argument or configure a custom title generator.")
         end
         return table.concat(vim.tbl_map(function(arg)
-            return arg:sub(1,1):upper() .. arg:sub(2)
+            local first = vim.fn.nr2char(vim.fn.char2nr(arg:sub(1, vim.fn.strchars(arg, 1))))
+            local rest = arg:sub(vim.fn.strlen(first) + 1)
+            return vim.fn.toupper(first) .. rest
         end, args), " ")
     end,
 
@@ -88,7 +90,9 @@ module.config.public = {
             error("The default template generator requires at least one argument to generate content. Please provide a title argument or configure a custom template generator.")
         end
         local heading = table.concat(vim.tbl_map(function(arg)
-            return arg:sub(1,1):upper() .. arg:sub(2)
+            local first = vim.fn.nr2char(vim.fn.char2nr(arg:sub(1, vim.fn.strchars(arg, 1))))
+            local rest = arg:sub(vim.fn.strlen(first) + 1)
+            return vim.fn.toupper(first) .. rest
         end, args), " ")
         return { "* " .. heading }
     end,

@@ -7,7 +7,7 @@
 The new module exposes a `:Neorg new` command.
 
 Provide one or more arguments to create a new `.norg` file. The arguments are forwarded
-to the `title`, `filename` and `heading` callback options to generate the respective
+to the `title`, `filename` and `template` callback options to generate the respective
 values for the new file.
 
 Example:
@@ -16,7 +16,7 @@ Example:
 ```
 
 This creates `my note title.norg` (or whatever `filename` returns) with the heading
-`* my note title` (or whatever `heading` returns).
+`* my note title` (or whatever `template` returns).
 --]]
 
 local neorg = require("neorg.core")
@@ -66,11 +66,6 @@ module.config.public = {
         return table.concat(args, " ")
     end,
 
-    -- Whether to inject document metadata at the top of the new file.
-    -- When true the `core.esupports.metagen` module is used to inject metadata,
-    -- and the `title` field in the metadata is set to the formatted title.
-    metadata = false,
-
     -- Callback function to generate the content from the subcommand
     -- arguments.  Receives all subcommand arguments and must return the content
     -- text string.  The default implementation generates a heading by joining
@@ -98,9 +93,7 @@ module.public = {
         ---@type core.dirman.create_file_opts
         local opts = {}
 
-        if module.config.public.metadata then
-            opts.metadata = { title = title }
-        end
+        opts.metadata = { title = title }
 
         module.required["core.dirman"].create_file(filename, workspace, opts)
 
@@ -138,7 +131,7 @@ module.public = {
                 -- Build the lines to insert.
                 local new_lines = {}
                 if insert_at > 0 then
-                    -- Add a blank separator between the metadata block and the heading.
+                    -- Add a blank separator between the metadata block and the content.
                     table.insert(new_lines, "")
                 end
                 vim.list_extend(new_lines, content)

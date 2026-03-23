@@ -38,8 +38,12 @@ module.load = function()
     modules.await("core.neorgcmd", function(neorgcmd)
         neorgcmd.add_commands_from_table({
             new = {
-                min_args = 1,
+                min_args = 0,
                 name = "external.new",
+            },
+            ["new-template"] = {
+                min_args = 1,
+                name = "external.new-template",
             },
         })
     end)
@@ -51,28 +55,41 @@ module.config.public = {
     workspace = nil,
 
     -- Callback function to generate the title from the subcommand arguments.
-    -- Receives all subcommand arguments and must return the formatted title string.
-    -- The default implementation joins all arguments with a single space.
+    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-template`
+    ---@return string The title to inject into the metadata block of the new file
+    ---               (if metadata injection is enabled via core.esupports.metagen)
     title = function(args)
-        return table.concat(args, " ")
+        if #args == 0 then
+            error("The default title generator requires at least one argument to generate a title. Please provide a title argument or configure a custom title generator.")
+        end
+        return table.concat(vim.tbl_map(function(arg)
+            return arg:sub(1,1):upper() .. arg:sub(2)
+        end, args), " ")
     end,
 
     -- Callback function to generate the filename from the subcommand arguments.
-    -- Receives all subcommand arguments and must return the filename string.
-    -- The filename may include subfolder path components; any missing directories
-    -- will be created automatically.
-    -- The default implementation joins all arguments with a single space.
+    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-template`
+    ---@return string The filename (including any subfolder path components) to create for the new file.
     filename = function(args)
-        return table.concat(args, " ")
+        if #args == 0 then
+            error("The default filename generator requires at least one argument to generate a filename. Please provide a title argument or configure a custom filename generator.")
+        end
+        return table.concat(vim.tbl_map(function(arg)
+            return arg:lower()
+        end, args), "-") .. ".norg"
     end,
 
-    -- Callback function to generate the content from the subcommand
-    -- arguments.  Receives all subcommand arguments and must return the content
-    -- text string.  The default implementation generates a heading by joining
-    -- all arguments with a single space.
-    -- Set this option to nil to suppress content generation insertion entirely.
-    template = function(args)
-        local heading = table.concat(args, " ")
+    --- Callback function to generate the content from the subcommand arguments.
+    ---@param name string? The name of the template, nil if the subcommand is `:Neorg new` rather than `:Neorg new-template`.
+    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-template`
+    ---@return string[] A list of lines to insert into the new file after the metadata block (if any)
+    template = function(name, args)
+        if #args == 0 then
+            error("The default template generator requires at least one argument to generate content. Please provide a title argument or configure a custom template generator.")
+        end
+        local heading = table.concat(vim.tbl_map(function(arg)
+            return arg:sub(1,1):upper() .. arg:sub(2)
+        end, args), " ")
         return { "* " .. heading }
     end,
 }
@@ -80,8 +97,12 @@ module.config.public = {
 ---@class external.new
 module.public = {
     --- Creates a new .norg file based on the supplied arguments.
-    ---@param ... string #Arguments passed to the `:Neorg new` command
-    new_file = function(args)
+    ---@param template_name string? The name of the template to use, or nil if the `:Neorg new` subcommand was used rather than `:Neorg new-template`.
+    ---@param args string[] #Arguments passed to the `:Neorg new` or `:Neorg new-template` subcommand.
+    new_file = function(template_name, args)
+        local metagen = neorg.modules.loaded_modules["core.esupports.metagen"]
+        local inject_metadata = metagen and (metagen.config.public.type == "auto" or metagen.config.public.type == "empty")
+
         local title_cb = module.config.public.title
         local filename_cb = module.config.public.filename
         local template_cb = module.config.public.template
@@ -93,7 +114,9 @@ module.public = {
         ---@type core.dirman.create_file_opts
         local opts = {}
 
-        opts.metadata = { title = title }
+        if inject_metadata then
+            opts.metadata = { title = title }
+        end
 
         module.required["core.dirman"].create_file(filename, workspace, opts)
 
@@ -106,9 +129,7 @@ module.public = {
         -- has been injected by core.esupports.metagen if applicable).
         if template_cb then
             vim.schedule(function()
-                local metagen = neorg.modules.loaded_modules["core.esupports.metagen"]
-
-                local content = template_cb(args)
+                local content = template_cb(template_name, args)
                 local buf = target_buf
                 local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
@@ -116,7 +137,7 @@ module.public = {
                 -- When metadata is enabled, insert the content after the closing
                 -- `@end` tag; otherwise insert at the very beginning of the file.
                 local insert_at = 0
-                if metagen.config.public.type == "auto" or metagen.config.public.type == "empty" then
+                if inject_metadata then
                     for i, line in ipairs(lines) do
                         if line == "@end" then
                             -- `i` is the 1-based Lua index of the `@end` line.
@@ -144,7 +165,11 @@ module.public = {
 
 module.on_event = function(event)
     if event.split_type[2] == "external.new" then
-        module.public.new_file(event.content)
+        module.public.new_file(nil, event.content)
+    elseif event.split_type[2] == "external.new-template" then
+        local template_name = event.content[1]
+        local args = { unpack(event.content, 2) }
+        module.public.new_file(template_name, args)
     end
 end
 

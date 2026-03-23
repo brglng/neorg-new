@@ -24,13 +24,12 @@ local modules = neorg.modules
 
 local module = modules.create("external.new")
 
-local METADATA_END_TAG = "@end"
-
 module.setup = function()
     return {
         success = true,
         requires = {
             "core.dirman",
+            "core.esupports.metagen",
         },
     }
 end
@@ -54,8 +53,8 @@ module.config.public = {
     -- Callback function to generate the title from the subcommand arguments.
     -- Receives all subcommand arguments and must return the formatted title string.
     -- The default implementation joins all arguments with a single space.
-    title = function(...)
-        return table.concat({ ... }, " ")
+    title = function(args)
+        return table.concat(args, " ")
     end,
 
     -- Callback function to generate the filename from the subcommand arguments.
@@ -63,8 +62,8 @@ module.config.public = {
     -- The filename may include subfolder path components; any missing directories
     -- will be created automatically.
     -- The default implementation joins all arguments with a single space.
-    filename = function(...)
-        return table.concat({ ... }, " ")
+    filename = function(args)
+        return table.concat(args, " ")
     end,
 
     -- Whether to inject document metadata at the top of the new file.
@@ -72,31 +71,28 @@ module.config.public = {
     -- and the `title` field in the metadata is set to the formatted title.
     metadata = false,
 
-    -- Callback function to generate the top-level heading from the subcommand
-    -- arguments.  Receives all subcommand arguments and must return the heading
-    -- text string.  The default implementation joins all arguments with a single
-    -- space.
-    -- Set this option to nil to suppress heading insertion entirely.
-    heading = function(...)
-        return table.concat({ ... }, " ")
+    -- Callback function to generate the content from the subcommand
+    -- arguments.  Receives all subcommand arguments and must return the content
+    -- text string.  The default implementation generates a heading by joining
+    -- all arguments with a single space.
+    -- Set this option to nil to suppress content generation insertion entirely.
+    template = function(args)
+        local heading = table.concat(args, " ")
+        return { "* " .. heading }
     end,
 }
 
 ---@class external.new
 module.public = {
-    version = "0.0.1",
-
     --- Creates a new .norg file based on the supplied arguments.
     ---@param ... string #Arguments passed to the `:Neorg new` command
-    new_file = function(...)
-        local args = { ... }
-
+    new_file = function(args)
         local title_cb = module.config.public.title
         local filename_cb = module.config.public.filename
-        local heading_cb = module.config.public.heading
+        local template_cb = module.config.public.template
 
-        local title = title_cb(unpack(args))
-        local filename = filename_cb(unpack(args))
+        local title = title_cb(args)
+        local filename = filename_cb(args)
         local workspace = module.config.public.workspace
 
         ---@type core.dirman.create_file_opts
@@ -115,19 +111,21 @@ module.public = {
 
         -- Add a top-level heading after the file has been opened (and metadata
         -- has been injected by core.esupports.metagen if applicable).
-        if heading_cb then
+        if template_cb then
             vim.schedule(function()
-                local heading_text = heading_cb(unpack(args))
+                local metagen = neorg.modules.loaded_modules["core.esupports.metagen"]
+
+                local content = template_cb(args)
                 local buf = target_buf
                 local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
                 -- Determine the insertion point.
-                -- When metadata is enabled, insert the heading after the closing
+                -- When metadata is enabled, insert the content after the closing
                 -- `@end` tag; otherwise insert at the very beginning of the file.
                 local insert_at = 0
-                if module.config.public.metadata then
+                if metagen.config.public.type == "auto" or metagen.config.public.type == "empty" then
                     for i, line in ipairs(lines) do
-                        if line == METADATA_END_TAG then
+                        if line == "@end" then
                             -- `i` is the 1-based Lua index of the `@end` line.
                             -- nvim_buf_set_lines uses 0-based indices, so passing
                             -- `i` as both start and end inserts *after* `@end`.
@@ -143,10 +141,9 @@ module.public = {
                     -- Add a blank separator between the metadata block and the heading.
                     table.insert(new_lines, "")
                 end
-                table.insert(new_lines, "* " .. heading_text)
+                vim.list_extend(new_lines, content)
 
                 vim.api.nvim_buf_set_lines(buf, insert_at, insert_at, false, new_lines)
-                vim.cmd("w")
             end)
         end
     end,
@@ -154,7 +151,7 @@ module.public = {
 
 module.on_event = function(event)
     if event.split_type[2] == "external.new" then
-        module.public.new_file(unpack(event.content))
+        module.public.new_file(event.content)
     end
 end
 

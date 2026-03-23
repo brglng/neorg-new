@@ -52,14 +52,14 @@ automatic metadata injection into new files.
 
 ```
 :Neorg new [arg1] [arg2] ...
-:Neorg new-template <template_name> [arg1] [arg2] ...
+:Neorg template <template_name> [arg1] [arg2] ...
 ```
 
 For `:Neorg new`, one or more arguments are recommended (the default callbacks
 require at least one). The arguments are forwarded to the `title`, `filename`,
 and `template` callbacks to generate the respective values for the new file.
 
-For `:Neorg new-template`, the first argument is the **template name** passed
+For `:Neorg template`, the first argument is the **template name** passed
 as the first parameter to the `template` callback; the remaining arguments are
 treated the same as with `:Neorg new`.
 
@@ -98,10 +98,8 @@ also injected.
         -- Default: capitalize the first letter of each argument and join
         -- with a single space (e.g. {"my", "note"} -> "My Note").
         title = function(args)
-            return table.concat(vim.tbl_map(function(arg)
-                local first = vim.fn.nr2char(vim.fn.char2nr(arg:sub(1, vim.fn.strchars(arg, 1))))
-                local rest = arg:sub(vim.fn.strlen(first) + 1)
-                return vim.fn.toupper(first) .. rest
+            return table.concat(vim.tbl_map(function(s)
+                return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)
             end, args), " ")
         end,
 
@@ -119,7 +117,7 @@ also injected.
         end,
 
         -- Callback that receives the template name (nil when using
-        -- `:Neorg new`, or a string when using `:Neorg new-template`) and
+        -- `:Neorg new`, or a string when using `:Neorg template`) and
         -- the subcommand arguments as a table, and returns a list of strings
         -- (lines) to insert into the new file.
         -- The lines are placed after the @document.meta block when
@@ -130,10 +128,8 @@ also injected.
         -- first letter of each argument and joining with a single space.
         -- Set to nil to insert no additional content.
         template = function(name, args)
-            local heading = table.concat(vim.tbl_map(function(arg)
-                local first = vim.fn.nr2char(vim.fn.char2nr(arg:sub(1, vim.fn.strchars(arg, 1))))
-                local rest = arg:sub(vim.fn.strlen(first) + 1)
-                return vim.fn.toupper(first) .. rest
+            local heading = table.concat(vim.tbl_map(function(s)
+                return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)
             end, args), " ")
             return { "* " .. heading }
         end,
@@ -143,7 +139,7 @@ also injected.
 
 ### Notes on metadata
 
-Metadata injection is **optional** and controlled entirely by
+Metadata injection is **optional** and controlled by
 `core.esupports.metagen`. When that module is loaded and its `type` option is
 set to `"auto"` or `"empty"`, a `@document.meta` block is injected into each
 new file with the `title` field set to the value returned by the `title`

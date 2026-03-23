@@ -75,7 +75,7 @@ module.config.public = {
         end
         return table.concat(vim.tbl_map(function(arg)
             return vim.fn.substitute(vim.fn.tolower(arg), "\\s\\+", "-", "g")
-        end, args), "-") .. ".norg"
+        end, args), "-")
     end,
 
     --- Callback function to generate the content from the subcommand arguments.
@@ -107,7 +107,7 @@ module.public = {
         local template_cb = module.config.public.template
 
         local title = title_cb(args)
-        local filename = filename_cb(args)
+        local filename = filename_cb(args) .. ".norg"
         local workspace = module.config.public.workspace
 
         ---@type core.dirman.create_file_opts

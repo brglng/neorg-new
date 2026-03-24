@@ -129,34 +129,36 @@ module.public = {
         if template_cb then
             vim.schedule(function()
                 local content = template_cb(template_name, args)
-                local buf = target_buf
-                local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+                if content and #content > 0 then
+                    local buf = target_buf
+                    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
-                -- Determine the insertion point.
-                -- When metadata is enabled, insert the content after the closing
-                -- `@end` tag; otherwise insert at the very beginning of the file.
-                local insert_at = 0
-                if inject_metadata then
-                    for i, line in ipairs(lines) do
-                        if line == "@end" then
-                            -- `i` is the 1-based Lua index of the `@end` line.
-                            -- nvim_buf_set_lines uses 0-based indices, so passing
-                            -- `i` as both start and end inserts *after* `@end`.
-                            insert_at = i
-                            break
+                    -- Determine the insertion point.
+                    -- When metadata is enabled, insert the content after the closing
+                    -- `@end` tag; otherwise insert at the very beginning of the file.
+                    local insert_at = 0
+                    if inject_metadata then
+                        for i, line in ipairs(lines) do
+                            if line == "@end" then
+                                -- `i` is the 1-based Lua index of the `@end` line.
+                                -- nvim_buf_set_lines uses 0-based indices, so passing
+                                -- `i` as both start and end inserts *after* `@end`.
+                                insert_at = i
+                                break
+                            end
                         end
                     end
-                end
 
-                -- Build the lines to insert.
-                local new_lines = {}
-                if insert_at > 0 then
-                    -- Add a blank separator between the metadata block and the content.
-                    table.insert(new_lines, "")
-                end
-                vim.list_extend(new_lines, content)
+                    -- Build the lines to insert.
+                    local new_lines = {}
+                    if insert_at > 0 then
+                        -- Add a blank separator between the metadata block and the content.
+                        table.insert(new_lines, "")
+                    end
+                    vim.list_extend(new_lines, content)
 
-                vim.api.nvim_buf_set_lines(buf, insert_at, insert_at, false, new_lines)
+                    vim.api.nvim_buf_set_lines(buf, insert_at, insert_at, false, new_lines)
+                end
             end)
         end
     end,

@@ -1,6 +1,6 @@
 # neorg-new
 
-A Neorg plugin that adds a `:Neorg new` command for quickly creating new `.norg`
+A Neorg plugin that adds `:Neorg new` and `:Neorg new-from-template` commands for quickly creating new `.norg`
 files with automatically generated content (and optional metadata).
 
 ## Installation
@@ -52,14 +52,14 @@ automatic metadata injection into new files.
 
 ```
 :Neorg new [arg1] [arg2] ...
-:Neorg template <template_name> [arg1] [arg2] ...
+:Neorg new-from-template <template_name> [arg1] [arg2] ...
 ```
 
 For `:Neorg new`, one or more arguments are recommended (the default callbacks
 require at least one). The arguments are forwarded to the `title`, `filename`,
 and `template` callbacks to generate the respective values for the new file.
 
-For `:Neorg template`, the first argument is the **template name** passed
+For `:Neorg new-from-template`, the first argument is the **template name** passed
 as the first parameter to the `template` callback; the remaining arguments are
 treated the same as with `:Neorg new`.
 
@@ -117,13 +117,9 @@ also injected.
         end,
 
         -- Callback that receives the template name (nil when using
-        -- `:Neorg new`, or a string when using `:Neorg template`) and
+        -- `:Neorg new`, or a string when using `:Neorg new-from-template`) and
         -- the subcommand arguments as a table, and returns a list of strings
         -- (lines) to insert into the new file.
-        -- The lines are placed after the @document.meta block when
-        -- core.esupports.metagen is configured to inject metadata
-        -- (type = "auto" or "empty"), or at the very beginning of the file
-        -- otherwise.
         -- Default: a single top-level heading formed by capitalizing the
         -- first letter of each argument and joining with a single space.
         -- Set to nil to insert no additional content.
@@ -145,35 +141,3 @@ set to `"auto"` or `"empty"`, a `@document.meta` block is injected into each
 new file with the `title` field set to the value returned by the `title`
 callback. When `core.esupports.metagen` is not loaded, or its `type` is set to
 `"none"`, no metadata block is generated and the `title` callback is not called.
-
-### Custom example
-
-```lua
-["external.new"] = {
-    config = {
-        workspace = "notes",
-        -- filename stored in a "pages" subfolder (override the default kebab-case)
-        filename = function(args)
-            return "pages/" .. table.concat(args, "-"):lower() .. ".norg"
-        end,
-        -- custom template: heading + blank line + a TODO item
-        template = function(name, args)
-            return {
-                "* " .. table.concat(args, " "),
-                "",
-                "- ( ) ",
-            }
-        end,
-    },
-},
-```
-
-Running `:Neorg new My Project Plan` would create
-`pages/my-project-plan.norg` (with the title `My Project Plan` in its metadata
-if `core.esupports.metagen` is enabled) and the following content:
-
-```norg
-* My Project Plan
-
-- ( ) 
-```

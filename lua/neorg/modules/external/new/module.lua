@@ -40,9 +40,9 @@ module.load = function()
                 min_args = 0,
                 name = "external.new",
             },
-            template = {
+            ["new-from-template"] = {
                 min_args = 1,
-                name = "external.new-template",
+                name = "external.new-from-template",
             },
         })
     end)
@@ -54,7 +54,7 @@ module.config.public = {
     workspace = nil,
 
     -- Callback function to generate the title from the subcommand arguments.
-    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-template`
+    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-from-template`
     ---@return string The title to inject into the metadata block of the new file
     ---               (if metadata injection is enabled via core.esupports.metagen)
     title = function(args)
@@ -67,7 +67,7 @@ module.config.public = {
     end,
 
     -- Callback function to generate the filename from the subcommand arguments.
-    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-template`
+    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-from-template`
     ---@return string The filename (including any subfolder path components) to create for the new file.
     filename = function(args)
         if #args == 0 then
@@ -79,8 +79,8 @@ module.config.public = {
     end,
 
     --- Callback function to generate the content from the subcommand arguments.
-    ---@param name string? The name of the template, nil if the subcommand is `:Neorg new` rather than `:Neorg new-template`.
-    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-template`
+    ---@param name string? The name of the template, nil if the subcommand is `:Neorg new` rather than `:Neorg new-from-template`.
+    ---@param args string[] All subcommand arguments passed to `:Neorg new` or `:Neorg new-from-template`
     ---@return string[] A list of lines to insert into the new file after the metadata block (if any)
     template = function(name, args)
         if #args == 0 then
@@ -96,8 +96,8 @@ module.config.public = {
 ---@class external.new
 module.public = {
     --- Creates a new .norg file based on the supplied arguments.
-    ---@param template_name string? The name of the template to use, or nil if the `:Neorg new` subcommand was used rather than `:Neorg new-template`.
-    ---@param args string[] #Arguments passed to the `:Neorg new` or `:Neorg new-template` subcommand.
+    ---@param template_name string? The name of the template to use, or nil if the `:Neorg new` subcommand was used rather than `:Neorg new-from-template`.
+    ---@param args string[] #Arguments passed to the `:Neorg new` or `:Neorg new-from-template` subcommand.
     new_file = function(template_name, args)
         local metagen = neorg.modules.loaded_modules["core.esupports.metagen"]
         local inject_metadata = metagen and (metagen.config.public.type == "auto" or metagen.config.public.type == "empty")
@@ -166,7 +166,7 @@ module.on_event = function(event)
     if event.split_type[2] == "external.new" then
         local args = { unpack(event.content, 1, #event.content) }
         module.public.new_file(nil, args)
-    elseif event.split_type[2] == "external.new-template" then
+    elseif event.split_type[2] == "external.new-from-template" then
         local template_name = event.content[1]
         local args = { unpack(event.content, 2, #event.content) }
         module.public.new_file(template_name, args)
@@ -176,7 +176,7 @@ end
 module.events.subscribed = {
     ["core.neorgcmd"] = {
         ["external.new"] = true,
-        ["external.new-template"] = true,
+        ["external.new-from-template"] = true,
     },
 }
 

@@ -108,12 +108,12 @@ also injected.
         -- The path may contain subfolder components; any missing parent
         -- directories are created automatically.
         -- Default: convert each argument to lowercase (replacing whitespace
-        -- with "-") and join with "-", then append ".norg"
-        -- (e.g. {"my", "note"} -> "my-note.norg").
+        -- with "-") and join with "-"
+        -- (e.g. {"my", "note"} -> "my-note").
         filename = function(args)
             return table.concat(vim.tbl_map(function(arg)
                 return vim.fn.substitute(vim.fn.tolower(arg), [[\s\+]], "-", "g")
-            end, args), "-") .. ".norg"
+            end, args), "-")
         end,
 
         -- Callback that receives the template name (nil when using

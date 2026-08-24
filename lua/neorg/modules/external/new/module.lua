@@ -225,7 +225,10 @@ module.private = {
     ---@return string #The parent's path relative to the root of the current workspace
     get_parent_file_path = function(buf)
         local dirman = module.required["core.dirman"]
-        local ws_name, ws_root = dirman.get_current_workspace()
+        -- `get_current_workspace()` returns a single `{ name, path }` pair table (not
+        -- multiple return values), so index it instead of unpacking.
+        local current_workspace = dirman.get_current_workspace()
+        local ws_name, ws_root = current_workspace[1], current_workspace[2]
 
         local ws_root_str = tostring(ws_root)
         if ws_root_str:sub(-1) ~= "/" and ws_root_str:sub(-1) ~= "\\" then
@@ -300,7 +303,8 @@ module.public = {
         end
 
         local dirman = module.required["core.dirman"]
-        local _, ws_root = dirman.get_current_workspace()
+        local current_workspace = dirman.get_current_workspace()
+        local ws_root = current_workspace[2]
 
         local target = (Path(ws_root) / tostring(parent_path)):add_suffix(".norg")
         vim.cmd("e " .. target:cmd_string())

@@ -84,7 +84,7 @@ module.config.public = {
     ---@return string[] A list of lines to insert into the new file after the metadata block (if any)
     template = function(name, args)
         if #args == 0 then
-            error("The default template generator requires at least one argument to generate content. Please provide a title argument or configure a custom template generator.")
+            return {}
         end
         local heading = table.concat(vim.tbl_map(function(s)
             return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)

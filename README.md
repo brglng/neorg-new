@@ -84,9 +84,8 @@ By default:
 
 - The **title** is formed by capitalizing the first letter of each argument and
   joining them with a single space.
-- The **filename** is formed by converting each argument to lowercase (with
-  whitespace replaced by `-`) and joining them with `-`, with a `.norg`
-  extension appended.
+- The **filename** is a timestamp formatted as `%Y%m%d%H%M%S` (e.g.
+  `20240824233008`), with a `.norg` extension appended.
 - The **heading** placed at the top of the file is the same as the title.
 
 **Example:**
@@ -95,7 +94,8 @@ By default:
 :Neorg new my meeting notes
 ```
 
-This creates `my-meeting-notes.norg` in the current (or configured) workspace,
+This creates `20240824233008.norg` (a `%Y%m%d%H%M%S` timestamp) in the current
+(or configured) workspace,
 and prepends the heading `* My Meeting Notes` at the top of the file. If
 `core.esupports.metagen` is loaded with `type = "auto"` or `type = "empty"`,
 a `@document.meta` block with the `title` field set to `My Meeting Notes` is
@@ -125,14 +125,11 @@ also injected.
         -- returns the file path (with the .norg extension).
         -- The path may contain subfolder components; any missing parent
         -- directories are created automatically.
-        -- Default: convert each argument to lowercase (replacing whitespace
-        -- with "-") and join with "-"
-        -- (e.g. {"my", "note"} -> "my-note").
+        -- Default: the current timestamp formatted as %Y%m%d%H%M%S
+        -- (e.g. "20240824233008" -> "20240824233008.norg").
         -- (Used by `new`, `new-from-template`, `fork` and `fork-from-template`.)
         filename = function(args)
-            return table.concat(vim.tbl_map(function(arg)
-                return vim.fn.substitute(vim.fn.tolower(arg), [[\s\+]], "-", "g")
-            end, args), "-")
+            return os.date("%Y%m%d%H%M%S")
         end,
 
         -- Callback that receives the template name (nil when using
@@ -184,7 +181,7 @@ again immediately afterwards, so user-configured templates are never modified.
 ```
 
 Given the current buffer is a `.norg` file located at `<workspace>/source/parent.norg`,
-this creates `my-idea-notes.norg` in the current workspace (or workspace configured via
+this creates `20240824233008.norg` (a `%Y%m%d%H%M%S` timestamp) in the current workspace (or workspace configured via
 `workspace`) and injects:
 
 ```

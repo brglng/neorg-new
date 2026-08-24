@@ -1,7 +1,9 @@
 # neorg-new
 
-A Neorg plugin that adds `:Neorg new` and `:Neorg new-from-template` commands for quickly creating new `.norg`
-files with automatically generated content (and optional metadata).
+A Neorg plugin that adds the `:Neorg new`, `:Neorg new-from-template`, `:Neorg fork`,
+`:Neorg fork-from-template` and `:Neorg parent` commands for quickly creating new `.norg`
+files (and navigating back to the parent of a forked note) with automatically generated
+content (and optional metadata).
 
 ## Installation
 
@@ -53,15 +55,30 @@ automatic metadata injection into new files.
 ```
 :Neorg new [arg1] [arg2] ...
 :Neorg new-from-template <template_name> [arg1] [arg2] ...
+:Neorg fork [arg1] [arg2] ...
+:Neorg fork-from-template <template_name> [arg1] [arg2] ...
+:Neorg parent
 ```
 
-For `:Neorg new`, one or more arguments are recommended (the default callbacks
-require at least one). The arguments are forwarded to the `title`, `filename`,
+For `:Neorg new` and `:Neorg fork`, one or more arguments are recommended (the default
+callbacks require at least one). The arguments are forwarded to the `title`, `filename`,
 and `template` callbacks to generate the respective values for the new file.
 
-For `:Neorg new-from-template`, the first argument is the **template name** passed
-as the first parameter to the `template` callback; the remaining arguments are
-treated the same as with `:Neorg new`.
+For `:Neorg new-from-template` and `:Neorg fork-from-template`, the first argument is the
+**template name** passed as the first parameter to the `template` callback; the remaining
+arguments are treated the same as with `:Neorg new`/`:Neorg fork`.
+
+The `fork` subcommands behave exactly like their `new` counterparts, with two differences:
+they are **only available inside a `.norg` file**, which is then used as the parent of the
+forked note, and they **require metadata injection** (`core.esupports.metagen` with
+`type = "auto"` or `type = "empty"`) to record the parent. A forked file additionally
+records a `parent` field inside its `@document.meta` block holding the path of the parent
+file relative to the root of the current workspace (e.g. `subdir/my-parent`). If metadata
+injection is disabled, `:Neorg fork` fails with an error instead of creating a file.
+
+The `parent` subcommand opens the parent of the current `.norg` file, as recorded in its
+`parent` metadata field. It is only available inside a `.norg` file and fails with an error
+if the current file carries no `parent` field.
 
 By default:
 
@@ -97,6 +114,7 @@ also injected.
         -- returns the title string written into @document.meta.
         -- Default: capitalize the first letter of each argument and join
         -- with a single space (e.g. {"my", "note"} -> "My Note").
+        -- (Used by `new`, `new-from-template`, `fork` and `fork-from-template`.)
         title = function(args)
             return table.concat(vim.tbl_map(function(s)
                 return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)
@@ -110,6 +128,7 @@ also injected.
         -- Default: convert each argument to lowercase (replacing whitespace
         -- with "-") and join with "-"
         -- (e.g. {"my", "note"} -> "my-note").
+        -- (Used by `new`, `new-from-template`, `fork` and `fork-from-template`.)
         filename = function(args)
             return table.concat(vim.tbl_map(function(arg)
                 return vim.fn.substitute(vim.fn.tolower(arg), [[\s\+]], "-", "g")
@@ -117,7 +136,8 @@ also injected.
         end,
 
         -- Callback that receives the template name (nil when using
-        -- `:Neorg new`, or a string when using `:Neorg new-from-template`) and
+        -- `:Neorg new`/`:Neorg fork`, or a string when using
+        -- `:Neorg new-from-template`/`:Neorg fork-from-template`) and
         -- the subcommand arguments as a table, and returns a list of strings
         -- (lines) to insert into the new file.
         -- Default: a single top-level heading formed by capitalizing the
@@ -135,9 +155,50 @@ also injected.
 
 ### Notes on metadata
 
-Metadata injection is **optional** and controlled by
-`core.esupports.metagen`. When that module is loaded and its `type` option is
-set to `"auto"` or `"empty"`, a `@document.meta` block is injected into each
-new file with the `title` field set to the value returned by the `title`
-callback. When `core.esupports.metagen` is not loaded, or its `type` is set to
-`"none"`, no metadata block is generated and the `title` callback is not called.
+For `:Neorg new`/`:Neorg new-from-template`, metadata injection is **optional**. When
+`core.esupports.metagen` is loaded and its `type` option is set to `"auto"` or `"empty"`,
+a `@document.meta` block is injected into each new file with the `title` field set to the
+value returned by the `title` callback. When `core.esupports.metagen` is not loaded, or its
+`type` is set to `"none"`, no metadata block is generated and the `title` callback is not
+called.
+
+For forked files (created with `:Neorg fork` or `:Neorg fork-from-template`), metadata
+injection is **required**: the command fails with an error if `core.esupports.metagen` is
+not loaded or its `type` is not `"auto"`/`"empty"`. When enabled, an additional `parent`
+field is written into the `@document.meta` block holding the path of the parent `.norg`
+file relative to the root of the current workspace (e.g. `source/my-file`). This field is
+a plain path string rather than a Norg link, since metadata values are plain strings.
+
+Because `core.esupports.metagen` only writes metadata keys that exist in its `template`,
+the module temporarily appends a `parent` entry to the template for the duration of the
+file creation (passing the value through `create_file`'s `metadata` option) and removes it
+again immediately afterwards, so user-configured templates are never modified.
+
+`core.integrations.treesitter` must be loaded (it is a dependency of
+`core.esupports.metagen`) for the `parent` subcommand to read the metadata.
+
+## Example
+
+```
+:Neorg fork my idea notes
+```
+
+Given the current buffer is a `.norg` file located at `<workspace>/source/parent.norg`,
+this creates `my-idea-notes.norg` in the current workspace (or workspace configured via
+`workspace`) and injects:
+
+```
+@document.meta
+title: My Idea Notes
+parent: source/parent
+...
+@end
+```
+
+plus a `* My Idea Notes` heading at the top of the file.
+
+To open the parent of the current note again:
+
+```
+:Neorg parent
+```

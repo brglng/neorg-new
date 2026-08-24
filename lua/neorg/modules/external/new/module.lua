@@ -87,7 +87,7 @@ module.config.public = {
     ---               (if metadata injection is enabled via core.esupports.metagen)
     title = function(args)
         if #args == 0 then
-            error("The default title generator requires at least one argument to generate a title. Please provide a title argument or configure a custom title generator.")
+            return ""
         end
         return table.concat(vim.tbl_map(function(s)
             return vim.fn.toupper(vim.fn.strcharpart(s, 0, 1)) .. vim.fn.strcharpart(s, 1)
